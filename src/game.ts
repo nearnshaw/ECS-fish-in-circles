@@ -41,6 +41,7 @@ log("curve points ", myPath)
 @Component("pathData")
 export class PathData {
   posIndex: number = 0
+  nextPosIndex: number = 1
   path: Vector3[] = myPath
   fraction: number = 0
 }
@@ -67,14 +68,15 @@ export class PatrolPath {
     if (path.fraction < 1) {
       transform.position = Vector3.Lerp(
         path.path[path.posIndex],
-        path.path[path.posIndex+1],
+        path.path[path.nextPosIndex],
         path.fraction
         )
       path.fraction += 1 / 10
     } else {
-      path.posIndex += 1
-      if (path.posIndex >= myPath.length) {
-        path.posIndex = 0
+      path.posIndex = path.nextPosIndex
+      path.nextPosIndex += 1
+      if (path.nextPosIndex >= myPath.length) {
+        path.nextPosIndex = 0
       }
       path.fraction = 0
       transform.lookAt(path.path[path.posIndex+1])  
