@@ -20,14 +20,20 @@ const curvePoint4 = new Vector3(0, 3, 4.5)
 // curve experiments
 //let curve = new BezierCurve()
 //BezierCurve.Interpolate()
+let curvePoints = 30
 
-let c = Curve3.CreateQuadraticBezier(point1, curvePoint1, point2, 15)
-let c2 = Curve3.CreateQuadraticBezier(point2, curvePoint2, point3, 15)
+
+let c = Curve3.CreateQuadraticBezier(point1, curvePoint1, point2, curvePoints)
+let c2 = Curve3.CreateQuadraticBezier(point2, curvePoint2, point3, curvePoints)
+let c3 = Curve3.CreateQuadraticBezier(point3, curvePoint3, point4, curvePoints)
+let c4 = Curve3.CreateQuadraticBezier(point4, curvePoint4, point1, curvePoints)
 
 
 const myPath: Vector3[] =[]
 myPath.push(...c.getPoints())
 myPath.push(...c2.getPoints())
+myPath.push(...c3.getPoints())
+myPath.push(...c4.getPoints())
 
 log("curve points ", myPath)
 
@@ -64,7 +70,7 @@ export class PatrolPath {
         path.path[path.posIndex+1],
         path.fraction
         )
-      path.fraction += 1 / 60
+      path.fraction += 1 / 10
     } else {
       path.posIndex += 1
       if (path.posIndex >= myPath.length) {
