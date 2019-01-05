@@ -8,19 +8,19 @@
 //const myPath: Vector3[] = [point1, point2, point3, point4, point5, point6, point7])
 
 
-const point1 = new Vector3(2, 3, 2)
+const point1 = new Vector3(4, 3, 3)
 const curvePoint1 = new Vector3(5, 3.5, 0)
 const point2 = new Vector3(8, 4, 2)
 const curvePoint2 = new Vector3(10, 5, 5)
-const point3 = new Vector3(8, 6, 9)
+const point3 = new Vector3(8, 6, 8)
 const curvePoint3 = new Vector3(5, 4.5, 10)
-const point4 = new Vector3(2, 3, 7)
+const point4 = new Vector3(2, 2, 7)
 const curvePoint4 = new Vector3(0, 3, 4.5)
 
 // curve experiments
 //let curve = new BezierCurve()
 //BezierCurve.Interpolate()
-let curvePoints = 30
+let curvePoints = 60
 
 
 let c = Curve3.CreateQuadraticBezier(point1, curvePoint1, point2, curvePoints)
@@ -29,11 +29,14 @@ let c3 = Curve3.CreateQuadraticBezier(point3, curvePoint3, point4, curvePoints)
 let c4 = Curve3.CreateQuadraticBezier(point4, curvePoint4, point1, curvePoints)
 
 
-const myPath: Vector3[] =[]
-myPath.push(...c.getPoints())
-myPath.push(...c2.getPoints())
-myPath.push(...c3.getPoints())
-myPath.push(...c4.getPoints())
+
+let myPath: Vector3[] =[]
+// myPath.push(...c.getPoints())
+// myPath.push(...c2.getPoints())
+// myPath.push(...c3.getPoints())
+// myPath.push(...c4.getPoints())
+
+myPath = c.continue(c2).continue(c3).continue(c4).getPoints()
 
 log("curve points ", myPath)
 
@@ -56,6 +59,7 @@ export class RotateData {
 @Component("swimSpeed")
 export class SwimSpeed {
   speed: number = 0.5
+  //effort: number = 0.5
 }
 
 
@@ -64,14 +68,14 @@ export class PatrolPath {
   update() {
     let transform = shark.get(Transform)
     let path = shark.get(PathData)
-    let rotate = shark.get(RotateData)
+    let speed = shark.get(SwimSpeed)
     if (path.fraction < 1) {
       transform.position = Vector3.Lerp(
         path.path[path.posIndex],
         path.path[path.nextPosIndex],
         path.fraction
         )
-      path.fraction += 1 / 10
+      path.fraction += speed.speed / 4
     } else {
       path.posIndex = path.nextPosIndex
       path.nextPosIndex += 1
@@ -85,6 +89,31 @@ export class PatrolPath {
 }
 
 engine.addSystem(new PatrolPath())
+
+export class UpdateSpeed {
+  update() {
+
+    let speed = shark.get(SwimSpeed)
+    let path = shark.get(PathData)
+    let depthDiff = (path.path[path.nextPosIndex].y - path.path[path.posIndex].y) * curvePoints
+    if (depthDiff > 1){
+      depthDiff = 1
+    } else if (depthDiff < -1){
+      depthDiff = -1
+    }
+    depthDiff += 1.5   // from 0.5 to 2.5
+  
+
+    clipSwim.speed = depthDiff
+    clipSwim.weight = depthDiff
+    
+    speed.speed = ((depthDiff * -1) + 3) // from 2.5 to 0.5
+    //log("dd :" , depthDiff, " speed: " , speed.speed)
+  }
+}
+
+engine.addSystem(new UpdateSpeed())
+
 
 // export class RotateSystem {
 //   update() {
@@ -113,17 +142,7 @@ engine.addSystem(new PatrolPath())
 
 // engine.addSystem(new RotateSystem())
 
-export class UpdateSpeed {
-  update() {
 
-    let speed = shark.get(SwimSpeed)
-    let path = shark.get(PathData)
-    clipSwim.speed = path.fraction * 10
-    clipSwim.weight = path.fraction
-  }
-}
-
-//engine.addSystem(new UpdateSpeed())
 
 
 // Add Shark
