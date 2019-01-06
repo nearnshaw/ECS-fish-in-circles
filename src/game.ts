@@ -20,7 +20,7 @@ const curvePoint4 = new Vector3(0, 3, 4.5)
 // curve experiments
 //let curve = new BezierCurve()
 //BezierCurve.Interpolate()
-let curvePoints = 60
+let curvePoints = 100
 
 
 let c = Curve3.CreateQuadraticBezier(point1, curvePoint1, point2, curvePoints)
@@ -75,7 +75,7 @@ export class PatrolPath {
         path.path[path.nextPosIndex],
         path.fraction
         )
-      path.fraction += speed.speed / 4
+      path.fraction += speed.speed // / 4
     } else {
       path.posIndex = path.nextPosIndex
       path.nextPosIndex += 1
@@ -179,9 +179,12 @@ engine.addEntity(shark)
 // Add 3D model for scenery
 const seaBed = new Entity()
 seaBed.add(new GLTFShape("models/Underwater_Example.gltf"))
-seaBed.add(new Transform())
-seaBed.get(Transform).position.set(5, 0, 5)
-seaBed.get(Transform).scale.setAll(0.5)
+seaBed.add(new Transform({
+  position: new Vector3(5, 0, 5),
+  rotation: Quaternion.Euler(0, 180, 0),
+  scale: new Vector3(0.5, 0.5, 0.5)
+
+}))
 engine.addEntity(seaBed)
 
 
