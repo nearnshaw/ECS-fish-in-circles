@@ -22,39 +22,56 @@ const curvePoint4 = new Vector3(0, 3, 4.5)
 //BezierCurve.Interpolate()
 let curvePoints = 100
 
-
+// Cuadratic Beizer
 let c = Curve3.CreateQuadraticBezier(point1, curvePoint1, point2, curvePoints)
 let c2 = Curve3.CreateQuadraticBezier(point2, curvePoint2, point3, curvePoints)
 let c3 = Curve3.CreateQuadraticBezier(point3, curvePoint3, point4, curvePoints)
 let c4 = Curve3.CreateQuadraticBezier(point4, curvePoint4, point1, curvePoints)
 
-
-
-let myPath: Vector3[] =[]
+let beizerPath: Vector3[] =[]
 // myPath.push(...c.getPoints())
 // myPath.push(...c2.getPoints())
 // myPath.push(...c3.getPoints())
 // myPath.push(...c4.getPoints())
 
-myPath = c.continue(c2).continue(c3).continue(c4).getPoints()
+beizerPath = c.continue(c2).continue(c3).continue(c4).getPoints()
 
-log("curve points ", myPath)
+log("curve points ", beizerPath)
 
+// Hermite spline
+let start = new Vector3(12, 1, 12)
+let end = new Vector3(19, 1, 19)
+let hermitePath = Curve3.CreateHermiteSpline(start, Vector3.Up(), end, Vector3.Down(), curvePoints).getPoints()
+
+// Catmull-Rom Spline
+const cpoint1 = new Vector3(14, 3, 3)
+const cpoint2 = new Vector3(18, 4, 2)
+const cpoint3 = new Vector3(18, 6, 8)
+const cpoint4 = new Vector3(12, 2, 7)
+const cpoints = [cpoint1, cpoint2, cpoint3, cpoint4]
+
+let catmullPath = Curve3.CreateCatmullRomSpline(cpoints, curvePoints, true).getPoints()
 
 @Component("pathData")
 export class PathData {
   posIndex: number = 0
   nextPosIndex: number = 1
-  path: Vector3[] = myPath
+  path: Vector3[] = beizerPath
   fraction: number = 0
+  constructor(path: Vector3[]){
+    this.path = path
+  }
 }
 
-@Component("rotateData")
-export class RotateData {
-  previousRot: Quaternion
-  targetRot: Quaternion
-  rotateFraction: number = 0
-}
+// component group of all sharks
+export const fish = engine.getComponentGroup(PathData)
+
+// @Component("rotateData")
+// export class RotateData {
+//   previousRot: Quaternion
+//   targetRot: Quaternion
+//   rotateFraction: number = 0
+// }
 
 @Component("swimSpeed")
 export class SwimSpeed {
@@ -66,24 +83,27 @@ export class SwimSpeed {
 
 export class PatrolPath {
   update() {
-    let transform = shark.get(Transform)
-    let path = shark.get(PathData)
-    let speed = shark.get(SwimSpeed)
-    if (path.fraction < 1) {
-      transform.position = Vector3.Lerp(
-        path.path[path.posIndex],
-        path.path[path.nextPosIndex],
-        path.fraction
-        )
-      path.fraction += speed.speed // / 4
-    } else {
-      path.posIndex = path.nextPosIndex
-      path.nextPosIndex += 1
-      if (path.nextPosIndex >= myPath.length) {
-        path.nextPosIndex = 0
-      }
-      path.fraction = 0
-      transform.lookAt(path.path[path.posIndex+1])  
+    for (let shark of fish.entities){
+
+      let transform = shark.get(Transform)
+      let path = shark.get(PathData)
+      let speed = shark.get(SwimSpeed)
+      if (path.fraction < 1) {
+        transform.position = Vector3.Lerp(
+          path.path[path.posIndex],
+          path.path[path.nextPosIndex],
+          path.fraction
+          )
+        path.fraction += speed.speed // / 4
+      } else {
+        path.posIndex = path.nextPosIndex
+        path.nextPosIndex += 1
+        if (path.nextPosIndex >= path.path.length) {
+          path.nextPosIndex = 0
+        }
+        path.fraction = 0
+        transform.lookAt(path.path[path.posIndex+1])
+      }  
     }
   }
 }
@@ -92,23 +112,24 @@ engine.addSystem(new PatrolPath())
 
 export class UpdateSpeed {
   update() {
-
-    let speed = shark.get(SwimSpeed)
-    let path = shark.get(PathData)
-    let depthDiff = (path.path[path.nextPosIndex].y - path.path[path.posIndex].y) * curvePoints
-    if (depthDiff > 1){
-      depthDiff = 1
-    } else if (depthDiff < -1){
-      depthDiff = -1
-    }
-    depthDiff += 1.5   // from 0.5 to 2.5
-  
-
-    clipSwim.speed = depthDiff
-    clipSwim.weight = depthDiff
+    for (let shark of fish.entities){
+      let speed = shark.get(SwimSpeed)
+      let path = shark.get(PathData)
+      let depthDiff = (path.path[path.nextPosIndex].y - path.path[path.posIndex].y) * curvePoints
+      if (depthDiff > 1){
+        depthDiff = 1
+      } else if (depthDiff < -1){
+        depthDiff = -1
+      }
+      depthDiff += 1.5   // from 0.5 to 2.5
     
-    speed.speed = ((depthDiff * -1) + 3) // from 2.5 to 0.5
-    //log("dd :" , depthDiff, " speed: " , speed.speed)
+      let clipSwim = shark.get(GLTFShape).getClip("swim")
+      clipSwim.speed = depthDiff
+      clipSwim.weight = depthDiff
+      
+      speed.speed = ((depthDiff * -1) + 3) // from 2.5 to 0.5
+      //log("dd :" , depthDiff, " speed: " , speed.speed)
+    }
   }
 }
 
@@ -144,32 +165,81 @@ engine.addSystem(new UpdateSpeed())
 
 
 
-
-// Add Shark
-let shark = new Entity()
-shark.set(new Transform())
-shark.get(Transform).position.set(5, 3, 5)
-shark.get(Transform).scale.setAll(0.5)
-shark.set(new GLTFShape("models/shark.gltf"))
+// Shark 1 (Beizer)
+let shark1 = new Entity()
+shark1.set(new Transform({
+  position: new Vector3(5, 3, 5),
+  scale: new Vector3(0.5, 0.5, 0.5)
+}))
+shark1.set(new GLTFShape("models/shark.gltf"))
 
 // Add animations
-const clipSwim = new AnimationClip("swim", {speed: 0.5, weight: 0.5})
-shark.get(GLTFShape).addClip(clipSwim)
+const clipSwim1 = new AnimationClip("swim", {speed: 0.5, weight: 0.5})
+shark1.get(GLTFShape).addClip(clipSwim1)
 
 // Activate swim animation
-clipSwim.play()
+clipSwim1.play()
 
 // add a path data component
-shark.set(new PathData())
-shark.set(new RotateData())
-shark.set(new SwimSpeed())
-shark.get(Transform).lookAt(myPath[2])
+shark1.set(new PathData(beizerPath))
+//shark.set(new RotateData())
+shark1.set(new SwimSpeed())
+shark1.get(Transform).lookAt(shark1.get(PathData).path[1])
 
 // Add shark to engine
-engine.addEntity(shark)
+engine.addEntity(shark1)
+
+
+// Add Shark  2 (Hermite Spline)
+let shark2 = new Entity()
+shark2.set(new Transform({
+  position: new Vector3(1, 0, 1),
+  scale: new Vector3(0.5, 0.5, 0.5)
+}))
+shark2.set(new GLTFShape("models/shark.gltf"))
+
+// Add animations
+const clipSwim2 = new AnimationClip("swim", {speed: 0.5, weight: 0.5})
+shark2.get(GLTFShape).addClip(clipSwim2)
+
+// Activate swim animation
+clipSwim2.play()
+
+// add a path data component
+shark2.set(new PathData(hermitePath))
+//shark.set(new RotateData())
+shark2.set(new SwimSpeed())
+shark2.get(Transform).lookAt(shark2.get(PathData).path[1])
+
+// Add shark to engine
+engine.addEntity(shark2)
 
 
 
+
+// Add Shark  3 (Catmull-Rom Spline)
+let shark3 = new Entity()
+shark3.set(new Transform({
+  position: new Vector3(1, 0, 1),
+  scale: new Vector3(0.5, 0.5, 0.5)
+}))
+shark3.set(new GLTFShape("models/shark.gltf"))
+
+// Add animations
+const clipSwim3 = new AnimationClip("swim", {speed: 0.5, weight: 0.5})
+shark3.get(GLTFShape).addClip(clipSwim3)
+
+// Activate swim animation
+clipSwim3.play()
+
+// add a path data component
+shark3.set(new PathData(catmullPath))
+//shark.set(new RotateData())
+shark3.set(new SwimSpeed())
+shark3.get(Transform).lookAt(shark2.get(PathData).path[1])
+
+// Add shark to engine
+engine.addEntity(shark3)
 
 
 
